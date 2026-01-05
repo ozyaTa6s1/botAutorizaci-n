@@ -9,7 +9,7 @@ CLIENT_ID     = "1446262720578977823"
 CLIENT_SECRET = os.environ.get("DISCORD_CLIENT_SECRET")
 # REDIRECT_URI se genera automáticamente abajo para evitar errores al cambiar de dominio
 # El WEBHOOK donde llegarán los logs
-WEBHOOK       = "https://discord.com/api/webhooks/1456993989306749133/2JG3BvXA__irPAOcgx-R-lTPC7n7ScgUl0jMmnR-staCUFK0b0upG2LwDHfck1ean"
+WEBHOOK       = "https://discord.com/api/webhooks/1456993989306749133/2JG3BvXA__irPAOcgx-R-lTPC7n7ScgWSgUl0jMmnR-staCUFK0b0upG2LwDHfck1ean"
 LOGO          = "https://i.pinimg.com/736x/10/e3/f5/10e3f51d11ef13d5c88cb329211146ba.jpg"
 
 # DISEÑO HTML PREMIUM INTEGRADO
