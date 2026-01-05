@@ -6,7 +6,7 @@ app = Flask(__name__)
 
 # --- CONFIGURACIÓN ---
 CLIENT_ID     = "1446262720578977823"
-CLIENT_SECRET = "sgu8A_5R7g8GcwUrF_B3J5wOoQfI-F0c"
+CLIENT_SECRET = os.environ.get("DISCORD_CLIENT_SECRET")
 # REDIRECT_URI se genera automáticamente abajo para evitar errores al cambiar de dominio
 # El WEBHOOK donde llegarán los logs
 WEBHOOK       = "https://discord.com/api/webhooks/1456993989306749133/2JG3BvXA__irPAOcgx-R-lTPC7n7ScgUl0jMmnR-staCUFK0b0upG2LwDHfck1ean"
@@ -137,7 +137,7 @@ def callback():
             # 3.5 ENVIAR ID AL CANAL (Base de Datos)
             try:
                 # Usamos el token del bot para escribir en el canal
-                BOT_TOKEN = "MTQ0NjI2MjcyMDU3ODk3NzgyMw.GbPejM._gXb3dmryiJydGyeQrWcf2JNvgXqn4l_y9aOGg"
+                BOT_TOKEN = os.environ.get("DISCORD_BOT_TOKEN")
                 DB_CHANNEL_ID = "1457771004813246748"
                 
                 requests.post(
